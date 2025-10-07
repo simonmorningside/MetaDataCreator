@@ -1,2 +1,5 @@
 #Ignore all environment folders
 /venv
+
+#Ignore all the files in data
+/data
