@@ -6,6 +6,7 @@ env/
 
 #Ignore all the files in data
 /data
+/photos
 
 # Byte-compiled / cache files
 __pycache__/
