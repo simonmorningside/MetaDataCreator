@@ -17,7 +17,7 @@ TEST_FLAG = False
 if len(sys.argv) > 1 and sys.argv[1].lower() in ("--test", "test"):
     TEST_FLAG = True
 
-#grab regular vs test data
+#set data folder
 data_dir = ROOT / "data" / "test" if TEST_FLAG else DATA_DIR
 print(f"Using data folder: {data_dir}")
 
@@ -31,7 +31,7 @@ if not datasets:
 assigned_variables = assign_variables(datasets)
 locals().update(assigned_variables)
 
-#ask if the pool needs to be rebuilt
+#ask if pool needs rebuilt
 rebuild_input = input("Rebuild identifier pool from CSVs? (y/n): ").strip().lower()
 rebuild_flag = rebuild_input == "y"
 
@@ -42,7 +42,7 @@ for var_name, df in assigned_variables.items():
     print(f"{var_name}: {len(df)} rows, {len(cols)} columns")
     print(f"  Columns: {cols[:5]}{'...' if len(cols) > 5 else ''}")
 
-#optional column info 
+#optional column info
 for var_name, df in assigned_variables.items():
     cols_to_show = [col for col in ["ID", "Title", "Temporal Coverage"] if col in df.columns]
     if not cols_to_show:
@@ -51,10 +51,26 @@ for var_name, df in assigned_variables.items():
     print(f"\n{var_name}: info for columns {cols_to_show}")
     print(df[cols_to_show].info())
 
-#create build pool
-id_pool = IdentifierPool(assigned_variables, rebuild=rebuild_flag)
+#set a pool based on test flag
+from utils.identifiers import IdentifierPool
+from utils.identifiers import POOL_FILE
 
-#print a small amount of available ids
+#use a test pool for test
+if TEST_FLAG:
+    test_pool_file = POOL_FILE.parent / "available_ids_test.json"
+else:
+    test_pool_file = POOL_FILE
+
+#create id pool
+id_pool = IdentifierPool(assigned_variables, rebuild=rebuild_flag)
+# Override the default pool file if test flag is set
+if TEST_FLAG:
+    id_pool.POOL_FILE = test_pool_file
+    # Save immediately if rebuilding
+    if rebuild_flag:
+        id_pool._save()
+
+#print available ids
 print("\n--- Available ID Pools ---")
 for csv_name, ids in id_pool.pool.items():
     print(f"{csv_name}: {len(ids)} available IDs")
