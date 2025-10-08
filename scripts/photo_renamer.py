@@ -14,12 +14,12 @@ from utils.csv_loader import load_csvs_from_dir
 from utils.variable_namer import assign_variables
 from utils.identifiers import IdentifierPool
 
-# --- Command-line arguments ---
+#read command line
 parser = argparse.ArgumentParser(description="Rename photos using available IDs.")
 parser.add_argument("--test", action="store_true", help="Use test folders and CSVs.")
 args = parser.parse_args()
 
-# --- Setup folders based on mode ---
+#setup based on test or not
 if args.test:
     DATA_DIR_USED = ROOT / "data" / "test"
     ORIGINAL_DIR = ROOT / "photos" / "test_original"
@@ -31,7 +31,7 @@ else:
 
 RENAMED_DIR.mkdir(parents=True, exist_ok=True)
 
-# --- Load CSVs and assign variables ---
+#load csvs and assign variables
 datasets = load_csvs_from_dir(DATA_DIR_USED)
 if not datasets:
     print(f"No CSV files found in {DATA_DIR_USED}")
@@ -40,11 +40,11 @@ if not datasets:
 assigned_variables = assign_variables(datasets)
 locals().update(assigned_variables)
 
-# --- Load Identifier Pool ---
+#load id pool
 id_pool = IdentifierPool(assigned_variables)
 print("\nAvailable pools:", list(id_pool.pool.keys()))
 
-# --- Prompt for CSV pool choice ---
+#prompt for csv pool choice
 while True:
     pool_choice = input("Choose CSV pool to use for renaming (e.g., 'ctk', 'fnd'): ").strip()
     if pool_choice in id_pool.pool:
@@ -53,7 +53,7 @@ while True:
 
 df = assigned_variables[pool_choice]
 
-# --- Prompt for Temporal Coverage ---
+#prompt for temp coverage
 temporal_map = {
     "1": "1920-1929",
     "2": "1930-1939",
@@ -75,7 +75,7 @@ if set_temporal:
             break
         print("Invalid selection. Try again.")
 
-# --- Rename photos ---
+#rename photos
 photo_files = sorted(ORIGINAL_DIR.glob("*.*"))
 if not photo_files:
     print(f"No photos found in {ORIGINAL_DIR}")
@@ -91,20 +91,20 @@ for photo_path in photo_files:
     new_filename = f"{identifier}{ext}"
     new_path = RENAMED_DIR / new_filename
 
-    # Move/rename photo
+    #move and rename photo
     shutil.move(str(photo_path), str(new_path))
 
-    # Update CSV: old filename goes into Title column
+    #update csv and title
     if "Title" in df.columns:
         df.loc[df[df["ID"] == identifier].index, "Title"] = photo_path.name
 
-    # Update CSV: Temporal Coverage if enabled
+    #update csv with temp coverage
     if set_temporal and "Temporal Coverage" in df.columns:
         df.loc[df[df["ID"] == identifier].index, "Temporal Coverage"] = temporal_value
 
     print(f"{photo_path.name} → {new_filename}")
 
-# --- Save updated CSV ---
+#save updated csv
 csv_file_path = DATA_DIR_USED / f"{pool_choice}.csv"
 df.to_csv(csv_file_path, index=False)
 print(f"\nUpdated CSV saved: {csv_file_path}")
