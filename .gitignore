@@ -1,5 +1,13 @@
 #Ignore all environment folders
-/venv
+venv/
+env/
+.venv/
+
 
 #Ignore all the files in data
 /data
+
+# Byte-compiled / cache files
+__pycache__/
+*.py[cod]
+*$py.class
