@@ -31,3 +31,13 @@ for var_name, df in assigned_variables.items():
     cols = list(df.columns)
     print(f"{var_name}: {len(df)} rows, {len(cols)} columns")
     print(f"  Columns: {cols[:5]}{'...' if len(cols) > 5 else ''}")
+
+for var_name, df in assigned_variables.items():
+    # Check if both columns exist
+    cols_to_show = [col for col in ["ID", "Title"] if col in df.columns]
+    if not cols_to_show:
+        print(f"{var_name}: no 'ID' or 'Title' columns found.")
+        continue
+    
+    print(f"\n{var_name}: info for columns {cols_to_show}")
+    print(df[cols_to_show].info())
