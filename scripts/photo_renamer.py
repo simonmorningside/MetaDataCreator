@@ -81,28 +81,18 @@ if not photo_files:
     print(f"No photos found in {ORIGINAL_DIR}")
     exit(0)
 
-for photo_path in photo_files:
-    identifier = id_pool.pop_identifier(pool_choice)
-    if not identifier:
-        print(f"No more available IDs in pool '{pool_choice}'. Stopping.")
-        break
+from utils.photo_variant_handler import group_and_rename_variants
 
-    ext = photo_path.suffix
-    new_filename = f"{identifier}{ext}"
-    new_path = RENAMED_DIR / new_filename
+df, total_renamed = group_and_rename_variants(
+    photo_files=photo_files,
+    id_pool=id_pool,
+    pool_choice=pool_choice,
+    df=df,
+    renamed_dir=RENAMED_DIR,
+    set_temporal=set_temporal,
+    temporal_value=temporal_value if set_temporal else None
+)
 
-    #move and rename photo
-    shutil.move(str(photo_path), str(new_path))
-
-    #update csv and title
-    if "Title" in df.columns:
-        df.loc[df[df["ID"] == identifier].index, "Title"] = photo_path.name
-
-    #update csv with temp coverage
-    if set_temporal and "Temporal Coverage" in df.columns:
-        df.loc[df[df["ID"] == identifier].index, "Temporal Coverage"] = temporal_value
-
-    print(f"{photo_path.name} → {new_filename}")
 
 #save updated csv
 csv_file_path = DATA_DIR_USED / f"{pool_choice}.csv"
