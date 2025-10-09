@@ -9,7 +9,7 @@ If you are running test data, create a folder called test/ in data and create co
 
 when running tests use the --test flag ex. python3 metadata.py --test so that your original data is not touched until you are ready
 
-Create a photos directory, in this directory create a folder for original's and renamed
+Create a photos directory, in this directory create a folder for the original photos named original and a folder for them to be put in after being renamed called renamed
 If running tests also create a test_original and a test_renamed folder in your photos directory
 
 when you first run metadata.py you will be prompted to name your csv's variables. These will be mapped for use for the rest of the project.
