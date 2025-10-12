@@ -10,7 +10,6 @@ sys.path.append(str(ROOT))
 from utils.paths import DATA_DIR
 from utils.csv_loader import load_csvs_from_dir
 from utils.variable_namer import assign_variables
-from utils.identifiers import IdentifierPool
 
 #check for test flag
 TEST_FLAG = False
@@ -53,22 +52,13 @@ for var_name, df in assigned_variables.items():
 
 #set a pool based on test flag
 from utils.identifiers import IdentifierPool
-from utils.identifiers import POOL_FILE
 
 #use a test pool for test
-if TEST_FLAG:
-    test_pool_file = POOL_FILE.parent / "available_ids_test.json"
-else:
-    test_pool_file = POOL_FILE
-
-#create id pool
-id_pool = IdentifierPool(assigned_variables, rebuild=rebuild_flag)
-# Override the default pool file if test flag is set
-if TEST_FLAG:
-    id_pool.POOL_FILE = test_pool_file
-    # Save immediately if rebuilding
-    if rebuild_flag:
-        id_pool._save()
+id_pool = IdentifierPool(
+    assigned_variables,
+    rebuild=rebuild_flag,
+    test_mode=TEST_FLAG
+)
 
 #print available ids
 print("\n--- Available ID Pools ---")

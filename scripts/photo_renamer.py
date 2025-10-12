@@ -14,24 +14,26 @@ from utils.csv_loader import load_csvs_from_dir
 from utils.variable_namer import assign_variables
 from utils.identifiers import IdentifierPool
 
-#read command line
+# --- Read command line arguments ---
 parser = argparse.ArgumentParser(description="Rename photos using available IDs.")
 parser.add_argument("--test", action="store_true", help="Use test folders and CSVs.")
 args = parser.parse_args()
 
-#setup based on test or not
+# --- Setup directories based on test flag ---
 if args.test:
     DATA_DIR_USED = ROOT / "data" / "test"
     ORIGINAL_DIR = ROOT / "photos" / "test_original"
     RENAMED_DIR = ROOT / "photos" / "test_renamed"
+    POOL_FILE_PATH = ROOT / "data" / "available_ids_test.json"
 else:
     DATA_DIR_USED = DATA_DIR
     ORIGINAL_DIR = ROOT / "photos" / "original"
     RENAMED_DIR = ROOT / "photos" / "renamed"
+    POOL_FILE_PATH = ROOT / "data" / "available_ids.json"
 
 RENAMED_DIR.mkdir(parents=True, exist_ok=True)
 
-#load csvs and assign variables
+# --- Load CSVs and assign variables ---
 datasets = load_csvs_from_dir(DATA_DIR_USED)
 if not datasets:
     print(f"No CSV files found in {DATA_DIR_USED}")
@@ -40,11 +42,14 @@ if not datasets:
 assigned_variables = assign_variables(datasets)
 locals().update(assigned_variables)
 
-#load id pool
+# --- Initialize IdentifierPool with test support ---
 id_pool = IdentifierPool(assigned_variables)
+id_pool.pool_file = POOL_FILE_PATH  # Override save/load target path
+id_pool._save()  # ensure it writes to the correct pool file
+
 print("\nAvailable pools:", list(id_pool.pool.keys()))
 
-#prompt for csv pool choice
+# --- Prompt for CSV pool choice ---
 while True:
     pool_choice = input("Choose CSV pool to use for renaming (e.g., 'ctk', 'fnd'): ").strip()
     if pool_choice in id_pool.pool:
@@ -53,7 +58,7 @@ while True:
 
 df = assigned_variables[pool_choice]
 
-#prompt for temp coverage
+# --- Prompt for temporal coverage selection ---
 temporal_map = {
     "1": "1920-1929",
     "2": "1930-1939",
@@ -75,7 +80,7 @@ if set_temporal:
             break
         print("Invalid selection. Try again.")
 
-#rename photos
+# --- Rename photos ---
 photo_files = sorted(ORIGINAL_DIR.glob("*.*"))
 if not photo_files:
     print(f"No photos found in {ORIGINAL_DIR}")
@@ -93,8 +98,7 @@ df, total_renamed = group_and_rename_variants(
     temporal_value=temporal_value if set_temporal else None
 )
 
-
-#save updated csv
+# --- Save updated CSV ---
 csv_file_path = DATA_DIR_USED / f"{pool_choice}.csv"
 df.to_csv(csv_file_path, index=False)
 print(f"\nUpdated CSV saved: {csv_file_path}")
