@@ -55,7 +55,7 @@ class PhotoDataApp(tk.Tk):
         try:
             self.status_label.config(text="Running metadata inspection...")
             self.update()
-            run_load_and_inspect(self.root_path, test_mode=self.test_mode.get())
+            run_load_and_inspect(self.root_path, test_mode=self.test_mode.get(), gui_mode=True)
             messagebox.showinfo("Success", "Metadata inspection complete!")
         except Exception as e:
             messagebox.showerror("Error", f"Failed to inspect: {e}")
@@ -66,7 +66,7 @@ class PhotoDataApp(tk.Tk):
         try:
             self.status_label.config(text="Running photo renamer...")
             self.update()
-            run_photo_renamer(self.root_path, test_mode=self.test_mode.get())
+            run_photo_renamer(self.root_path, test_mode=self.test_mode.get(), gui_mode=True)
             messagebox.showinfo("Success", "Photo renaming complete!")
         except Exception as e:
             messagebox.showerror("Error", f"Failed to rename: {e}")
