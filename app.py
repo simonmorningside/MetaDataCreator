@@ -4,6 +4,8 @@ from tkinter import ttk, messagebox
 from pathlib import Path
 from scripts.metadata import run_load_and_inspect
 from scripts.photo_renamer import run_photo_renamer
+from pathlib import Path
+from utils.paths import ensure_all_dirs
 
 
 class PhotoDataApp(tk.Tk):
@@ -13,6 +15,8 @@ class PhotoDataApp(tk.Tk):
         self.geometry("400x320")
         self.root_path = Path(__file__).resolve().parent
         self.test_mode = tk.BooleanVar(value=False)
+
+        ensure_all_dirs()
 
         # --- ALERT BANNER ---
         self.alert_frame = tk.Frame(self, bg="red", height=40)
@@ -42,6 +46,7 @@ class PhotoDataApp(tk.Tk):
         self.status_label = ttk.Label(self, text="Ready", foreground="gray")
         self.status_label.pack(side="bottom", pady=10)
 
+
     def toggle_test_mode(self):
         """Show or hide the red alert banner."""
         if self.test_mode.get():
@@ -55,7 +60,7 @@ class PhotoDataApp(tk.Tk):
         try:
             self.status_label.config(text="Running metadata inspection...")
             self.update()
-            run_load_and_inspect(self.root_path, test_mode=self.test_mode.get(), gui_mode=True)
+            run_load_and_inspect(test_mode=self.test_mode.get(), gui_mode=True)
             messagebox.showinfo("Success", "Metadata inspection complete!")
         except Exception as e:
             messagebox.showerror("Error", f"Failed to inspect: {e}")
@@ -66,7 +71,7 @@ class PhotoDataApp(tk.Tk):
         try:
             self.status_label.config(text="Running photo renamer...")
             self.update()
-            run_photo_renamer(self.root_path, test_mode=self.test_mode.get(), gui_mode=True)
+            run_photo_renamer(test_mode=self.test_mode.get(), gui_mode=True)
             messagebox.showinfo("Success", "Photo renaming complete!")
         except Exception as e:
             messagebox.showerror("Error", f"Failed to rename: {e}")

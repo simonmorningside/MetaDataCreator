@@ -2,10 +2,15 @@
 import json
 from pathlib import Path
 import pandas as pd
+from utils.paths import DOCS_BASE
+
+# Base data folder inside Documents
+DOCUMENTS_DATA_DIR = DOCS_BASE / "data"
+DOCUMENTS_TEST_DIR = DOCUMENTS_DATA_DIR / "test"
 
 # Default pool files
-DEFAULT_POOL_FILE = Path(__file__).resolve().parent.parent / "data" / "available_ids.json"
-TEST_POOL_FILE = Path(__file__).resolve().parent.parent / "data" / "available_ids_test.json"
+DEFAULT_POOL_FILE = DOCUMENTS_DATA_DIR / "available_ids.json"
+TEST_POOL_FILE = DOCUMENTS_TEST_DIR / "available_ids_test.json"
 
 
 class IdentifierPool:
@@ -26,6 +31,9 @@ class IdentifierPool:
         self.title_col = title_col
         self.csv_keys = list(csv_datasets.keys())
         self.pool_file = TEST_POOL_FILE if test_mode else DEFAULT_POOL_FILE
+
+        # Ensure the folder exists
+        self.pool_file.parent.mkdir(parents=True, exist_ok=True)
 
         # Rebuild or load
         if not rebuild and self.pool_file.exists():
