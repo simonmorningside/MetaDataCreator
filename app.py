@@ -4,15 +4,15 @@ from tkinter import ttk, messagebox
 from pathlib import Path
 from scripts.metadata import run_load_and_inspect
 from scripts.photo_renamer import run_photo_renamer
-from pathlib import Path
 from utils.paths import ensure_all_dirs
+from utils.identifiers import display_identifier_pools
 
 
 class PhotoDataApp(tk.Tk):
     def __init__(self):
         super().__init__()
         self.title("Photo Data Management App")
-        self.geometry("400x320")
+        self.geometry("400x360")
         self.root_path = Path(__file__).resolve().parent
         self.test_mode = tk.BooleanVar(value=False)
 
@@ -35,6 +35,7 @@ class PhotoDataApp(tk.Tk):
         ttk.Label(self, text="Select Action:").pack(pady=10)
         ttk.Button(self, text="Inspect Metadata", command=self.inspect_action).pack(pady=5)
         ttk.Button(self, text="Rename Photos", command=self.rename_action).pack(pady=5)
+        ttk.Button(self, text="View Identifier Pools", command=self.view_identifiers_action).pack(pady=5)
 
         ttk.Checkbutton(
             self,
@@ -45,7 +46,6 @@ class PhotoDataApp(tk.Tk):
 
         self.status_label = ttk.Label(self, text="Ready", foreground="gray")
         self.status_label.pack(side="bottom", pady=10)
-
 
     def toggle_test_mode(self):
         """Show or hide the red alert banner."""
@@ -77,6 +77,14 @@ class PhotoDataApp(tk.Tk):
             messagebox.showerror("Error", f"Failed to rename: {e}")
         finally:
             self.status_label.config(text="Ready")
+
+    def view_identifiers_action(self):
+        """Show the current identifier pools (main/test)."""
+        try:
+            pool_summary = display_identifier_pools()
+            messagebox.showinfo("Identifier Pools", pool_summary)
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to display identifier pools: {e}")
 
 
 if __name__ == "__main__":
