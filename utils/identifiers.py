@@ -81,7 +81,8 @@ class IdentifierPool:
         self.pool_file.parent.mkdir(parents=True, exist_ok=True)
         with self.pool_file.open("w", encoding="utf-8") as f:
             json.dump(self.pool, f, indent=2)
-
+            
+    
     def summary(self):
         for csv_name, ids in self.pool.items():
             print(f"{csv_name}: {len(ids)} available IDs")

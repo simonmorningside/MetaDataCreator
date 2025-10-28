@@ -13,6 +13,8 @@ def load_csvs_from_dir(data_dir: Path) -> dict[str, pd.DataFrame]:
     for csv_file in csv_files:
         try:
             df = pd.read_csv(csv_file)
+            # Store original file path in DataFrame attrs
+            df.attrs["file_path"] = str(csv_file)
             datasets[csv_file.stem] = df
             print(f"Loaded {csv_file.name} ({len(df)} rows, {len(df.columns)} columns)")
         except Exception as e:
