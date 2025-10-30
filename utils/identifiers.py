@@ -2,10 +2,15 @@
 import json
 from pathlib import Path
 import pandas as pd
+from utils.paths import DOCS_BASE
+
+# Base data folder inside Documents
+DOCUMENTS_DATA_DIR = DOCS_BASE / "data"
+DOCUMENTS_TEST_DIR = DOCUMENTS_DATA_DIR / "test"
 
 # Default pool files
-DEFAULT_POOL_FILE = Path(__file__).resolve().parent.parent / "data" / "available_ids.json"
-TEST_POOL_FILE = Path(__file__).resolve().parent.parent / "data" / "available_ids_test.json"
+DEFAULT_POOL_FILE = DOCUMENTS_DATA_DIR / "available_ids.json"
+TEST_POOL_FILE = DOCUMENTS_TEST_DIR / "available_ids_test.json"
 
 
 class IdentifierPool:
@@ -27,6 +32,9 @@ class IdentifierPool:
         self.csv_keys = list(csv_datasets.keys())
         self.pool_file = TEST_POOL_FILE if test_mode else DEFAULT_POOL_FILE
 
+        # Ensure the folder exists
+        self.pool_file.parent.mkdir(parents=True, exist_ok=True)
+
         # Rebuild or load
         if not rebuild and self.pool_file.exists():
             with self.pool_file.open("r", encoding="utf-8") as f:
@@ -38,8 +46,15 @@ class IdentifierPool:
     def _build_pool(self, datasets: dict[str, pd.DataFrame]) -> dict[str, list[str]]:
         pool = {}
         for name, df in datasets.items():
-            if self.id_col in df.columns and self.title_col in df.columns:
-                available_ids = df[df[self.title_col].isna()][self.id_col].astype(str).tolist()
+            if self.id_col in df.columns:
+                # Step 1: Drop rows with missing IDs
+                df_valid = df[df[self.id_col].notna()]
+
+                # Step 2: Keep only rows where all other columns are empty
+                other_cols = [col for col in df.columns if col != self.id_col]
+                mask_empty = df_valid[other_cols].isna().all(axis=1)
+                available_ids = df_valid.loc[mask_empty, self.id_col].astype(str).tolist()
+
                 pool[name] = available_ids
             else:
                 pool[name] = []
@@ -66,10 +81,38 @@ class IdentifierPool:
         self.pool_file.parent.mkdir(parents=True, exist_ok=True)
         with self.pool_file.open("w", encoding="utf-8") as f:
             json.dump(self.pool, f, indent=2)
-
+            
+    
     def summary(self):
         for csv_name, ids in self.pool.items():
             print(f"{csv_name}: {len(ids)} available IDs")
 
     def items(self):
         return self.pool.items()
+    
+
+def display_identifier_pools() -> str:
+    """Return a formatted string showing the full contents of both normal and test identifier pools."""
+    pools = []
+    for label, pool_file in [("Main Pool", DEFAULT_POOL_FILE), ("Test Pool", TEST_POOL_FILE)]:
+        if pool_file.exists():
+            try:
+                with pool_file.open("r", encoding="utf-8") as f:
+                    pool_data = json.load(f)
+                summary_lines = [f"=== {label} ({pool_file.name}) ==="]
+                for name, ids in pool_data.items():
+                    summary_lines.append(f"\n{name}: {len(ids)} IDs available")
+                    if ids:
+                        # Show all IDs, separated by commas (limit line length)
+                        id_list = ", ".join(ids)
+                        summary_lines.append(f"  IDs: {id_list}")
+                    else:
+                        summary_lines.append("  (No IDs available)")
+                pools.append("\n".join(summary_lines))
+            except Exception as e:
+                pools.append(f"{label}: Failed to load ({e})")
+        else:
+            pools.append(f"{label}: No pool file found.")
+    return "\n\n".join(pools)
+
+

@@ -1,26 +1,33 @@
 from pathlib import Path
 from tkinter import messagebox, simpledialog
-from utils.paths import DATA_DIR
+from utils.paths import (
+    DATA_DIR,
+    DATA_TEST_DIR,
+    PHOTOS_ORIGINAL_DIR,
+    PHOTOS_RENAMED_DIR,
+    PHOTOS_TEST_ORIGINAL_DIR,
+    PHOTOS_TEST_RENAMED_DIR,
+)
 from utils.csv_loader import load_csvs_from_dir
 from utils.variable_namer import assign_variables
 from utils.identifiers import IdentifierPool
 from utils.photo_variant_handler import group_and_rename_variants
 
 
-def run_photo_renamer(root: Path, test_mode: bool = False, gui_mode: bool = False):
+def run_photo_renamer(test_mode: bool = False, gui_mode: bool = False):
     """Rename photo files using IDs from CSVs (CLI or GUI)."""
 
     # --- Paths ---
     if test_mode:
-        data_dir = root / "data" / "test"
-        original_dir = root / "photos" / "test_original"
-        renamed_dir = root / "photos" / "test_renamed"
-        pool_file = root / "data" / "available_ids_test.json"
+        data_dir = DATA_TEST_DIR
+        original_dir = PHOTOS_TEST_ORIGINAL_DIR
+        renamed_dir = PHOTOS_TEST_RENAMED_DIR
+        pool_file = DATA_TEST_DIR / "available_ids_test.json"
     else:
         data_dir = DATA_DIR
-        original_dir = root / "photos" / "original"
-        renamed_dir = root / "photos" / "renamed"
-        pool_file = root / "data" / "available_ids.json"
+        original_dir = PHOTOS_ORIGINAL_DIR
+        renamed_dir = PHOTOS_RENAMED_DIR
+        pool_file = DATA_DIR / "available_ids.json"
 
     renamed_dir.mkdir(parents=True, exist_ok=True)
 
