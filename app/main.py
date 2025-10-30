@@ -1,5 +1,5 @@
-#!/usr/bin/env python3
-from app import PhotoDataApp
+
+from app.views.main_window import PhotoDataApp
 
 def main():
     app = PhotoDataApp()
