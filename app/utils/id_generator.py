@@ -1,7 +1,7 @@
 import re
 import pandas as pd
 from pathlib import Path
-from utils.paths import DATA_DIR, DATA_TEST_DIR
+from app.utils.paths import DATA_DIR, DATA_TEST_DIR
 
 def generate_new_ids_for_csv(csv_name: str, num_new: int = 10, test_mode: bool = False) -> None:
     """
