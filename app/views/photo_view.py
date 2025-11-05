@@ -1,3 +1,4 @@
+# photo_view.py
 import tkinter as tk
 from tkinter import ttk
 
@@ -7,5 +8,13 @@ class PhotoView(tk.Frame):
         self.app = app
 
         ttk.Label(self, text="Photo Tools", font=("Arial", 16, "bold")).pack(pady=20)
+
+        # Test mode checkbox
+        self.test_mode_var = tk.BooleanVar(value=False)
+        ttk.Checkbutton(self, text="Test Mode", variable=self.test_mode_var).pack(pady=5)
+
+        # Rename photos button
         ttk.Button(self, text="Rename Photos", command=self.app.photo_controller.rename_photos).pack(pady=5)
+
+        # Back to menu button
         ttk.Button(self, text="Back to Menu", command=lambda: app.show_frame("MainMenu")).pack(pady=20)
