@@ -3,7 +3,7 @@ import argparse
 from pathlib import Path
 import pandas as pd
 from PIL import Image
-from transformers import BlipProcessor, BlipForConditionalGeneration
+from transformers import pipeline
 from app.utils.paths import (
     DATA_DIR,
     DATA_TEST_DIR,
@@ -12,11 +12,13 @@ from app.utils.paths import (
 )
 import json
 
+
 class AIController:
     def __init__(self, test_mode: bool = False):
-        """Initialize the AI controller and load the captioning model."""
+        """Initialize the AI controller and load the ViT-GPT2 image captioning model."""
         self.test_mode = test_mode
 
+        # --- Directories based on mode ---
         if test_mode:
             self.data_dir = DATA_TEST_DIR
             self.photo_dir = PHOTOS_TEST_RENAMED_DIR
@@ -26,10 +28,11 @@ class AIController:
             self.photo_dir = PHOTOS_RENAMED_DIR
             self.ai_pool_file = DATA_DIR / "ai_pool.json"
 
-        print("Loading BLIP image captioning model...")
-        self.processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-base")
-        self.model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-base")
-        print("Model loaded.\n")
+        # --- Load ViT-GPT2 captioning model ---
+        model_name = "nlpconnect/vit-gpt2-image-captioning"
+        print(f"Loading model: {model_name} ...")
+        self.captioner = pipeline("image-to-text", model=model_name)
+        print("Model loaded successfully.\n")
 
         # --- Load AI pool IDs ---
         if not self.ai_pool_file.exists():
@@ -39,12 +42,19 @@ class AIController:
         print(f"Loaded {len(self.ai_pool_ids)} IDs from AI pool.")
 
     def generate_caption(self, image_path: Path) -> str:
-        """Generate a caption for a single image."""
+        """Generate a caption for a single image using the ViT-GPT2 model."""
         image = Image.open(image_path).convert("RGB")
-        inputs = self.processor(images=image, return_tensors="pt")
-        out = self.model.generate(**inputs)
-        caption = self.processor.decode(out[0], skip_special_tokens=True)
+        results = self.captioner(image)
+        caption = results[0]['generated_text'].strip()
         return caption
+
+    def remove_captioned_id(self, image_id: str):
+        """Remove a captioned ID from the AI pool and update the JSON file."""
+        if image_id in self.ai_pool_ids:
+            self.ai_pool_ids.remove(image_id)
+            with open(self.ai_pool_file, 'w') as f:
+                json.dump(self.ai_pool_ids, f, indent=2)
+            print(f"🗑️  Removed {image_id} from AI pool ({len(self.ai_pool_ids)} remaining).")
 
     def caption_all_images(self):
         """Loop over CSV files and generate descriptions only for IDs in the AI pool."""
@@ -88,8 +98,14 @@ class AIController:
                 print(f"{image_path.name}: {caption}")
                 df.at[idx, 'Description'] = caption
 
+                # ✅ Remove ID from pool after successful captioning
+                self.remove_captioned_id(image_id)
+
             df.to_csv(csv_path, index=False)
             print(f"Updated CSV saved: {csv_path}")
+
+        print("\n✅ Captioning complete.")
+        print(f"Remaining IDs in pool: {len(self.ai_pool_ids)}")
 
 
 if __name__ == "__main__":
