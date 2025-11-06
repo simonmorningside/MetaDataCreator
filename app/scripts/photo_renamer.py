@@ -51,7 +51,7 @@ def run_photo_renamer(test_mode: bool = False, gui_mode: bool = False):
     assigned_variables = assign_variables(datasets)
 
     # --- Initialize ID pool (reads existing pool internally) ---
-    id_pool = IdentifierPool(assigned_variables)
+    id_pool = IdentifierPool(assigned_variables, test_mode=test_mode)
     id_pool.pool_file = pool_file  # points to the correct pool for this mode
 
     # --- Choose pool ---
