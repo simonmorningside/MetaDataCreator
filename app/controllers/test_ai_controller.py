@@ -15,7 +15,7 @@ import json
 
 class AIController:
     def __init__(self, test_mode: bool = False):
-        """Initialize the AI controller and load the ViT-GPT2 image captioning model."""
+        """Initialize the AI controller and load the BLIP image captioning model."""
         self.test_mode = test_mode
 
         # --- Directories based on mode ---
@@ -28,8 +28,8 @@ class AIController:
             self.photo_dir = PHOTOS_RENAMED_DIR
             self.ai_pool_file = DATA_DIR / "ai_pool.json"
 
-        # --- Load ViT-GPT2 captioning model ---
-        model_name = "nlpconnect/vit-gpt2-image-captioning"
+        # --- Load BLIP image captioning model ---
+        model_name = "Salesforce/blip-image-captioning-large"
         print(f"Loading model: {model_name} ...")
         self.captioner = pipeline("image-to-text", model=model_name)
         print("Model loaded successfully.\n")
@@ -42,7 +42,7 @@ class AIController:
         print(f"Loaded {len(self.ai_pool_ids)} IDs from AI pool.")
 
     def generate_caption(self, image_path: Path) -> str:
-        """Generate a caption for a single image using the ViT-GPT2 model."""
+        """Generate a caption for a single image using the BLIP model."""
         image = Image.open(image_path).convert("RGB")
         results = self.captioner(image)
         caption = results[0]['generated_text'].strip()
