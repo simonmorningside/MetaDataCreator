@@ -7,8 +7,8 @@ env/
 #Ignore all the files in data
 /data
 /photos
-/build
-/dist
+/app/build
+/app/dist
 
 # Byte-compiled / cache files
 __pycache__/

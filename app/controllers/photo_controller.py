@@ -1,5 +1,5 @@
 from tkinter import messagebox
-from app.scripts.photo_renamer import run_photo_renamer
+from scripts.photo_renamer import run_photo_renamer
 
 
 class PhotoController:

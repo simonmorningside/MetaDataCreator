@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import csv
 from tkinter import Tk, simpledialog, messagebox
-from app.utils.paths import DATA_DIR, DATA_TEST_DIR, ensure_all_dirs
+from utils.paths import DATA_DIR, DATA_TEST_DIR, ensure_all_dirs
 
 # --- Ensure folders exist ---
 ensure_all_dirs()

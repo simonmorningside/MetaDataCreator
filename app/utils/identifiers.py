@@ -2,7 +2,7 @@
 import json
 from pathlib import Path
 import pandas as pd
-from app.utils.paths import DOCS_BASE
+from utils.paths import DOCS_BASE
 
 # Base data folder inside Documents
 DOCUMENTS_DATA_DIR = DOCS_BASE / "data"

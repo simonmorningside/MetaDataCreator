@@ -1,6 +1,6 @@
 import tkinter as tk
 from tkinter import ttk, messagebox
-from app.controllers.test_ai_controller import AIController  # ✅ use your existing controller
+from controllers.test_ai_controller import AIController  # ✅ use your existing controller
 
 
 class MetadataView(tk.Frame):

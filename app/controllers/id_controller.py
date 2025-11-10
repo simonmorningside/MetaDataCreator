@@ -1,6 +1,6 @@
 from tkinter import messagebox, simpledialog
-from app.utils.id_generator import generate_new_ids_for_csv
-from app.utils.identifiers import display_identifier_pools
+from utils.id_generator import generate_new_ids_for_csv
+from utils.identifiers import display_identifier_pools
 
 
 class IDController:

@@ -1,6 +1,6 @@
 from pathlib import Path
 from tkinter import messagebox, simpledialog
-from app.utils.paths import (
+from utils.paths import (
     DATA_DIR,
     DATA_TEST_DIR,
     PHOTOS_ORIGINAL_DIR,
@@ -8,10 +8,10 @@ from app.utils.paths import (
     PHOTOS_TEST_ORIGINAL_DIR,
     PHOTOS_TEST_RENAMED_DIR,
 )
-from app.utils.csv_loader import load_csvs_from_dir
-from app.utils.variable_namer import assign_variables
-from app.utils.identifiers import IdentifierPool
-from app.utils.photo_variant_handler import group_and_rename_variants
+from utils.csv_loader import load_csvs_from_dir
+from utils.variable_namer import assign_variables
+from utils.identifiers import IdentifierPool
+from utils.photo_variant_handler import group_and_rename_variants
 import json
 import pandas as pd
 

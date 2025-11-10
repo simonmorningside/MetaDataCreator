@@ -4,7 +4,7 @@ from pathlib import Path
 import pandas as pd
 from PIL import Image
 from transformers import pipeline
-from app.utils.paths import (
+from utils.paths import (
     DATA_DIR,
     DATA_TEST_DIR,
     PHOTOS_RENAMED_DIR,
