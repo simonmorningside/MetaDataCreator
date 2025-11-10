@@ -1,5 +1,5 @@
 from tkinter import messagebox
-from app.scripts.metadata import run_load_and_inspect
+from scripts.metadata import run_load_and_inspect
 
 class MetadataController:
     def __init__(self, app):

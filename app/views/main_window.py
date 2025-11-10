@@ -1,15 +1,15 @@
 import tkinter as tk
 from tkinter import ttk
 
-from app.controllers.metadata_controller import MetadataController
-from app.controllers.photo_controller import PhotoController
-from app.controllers.id_controller import IDController
+from controllers.metadata_controller import MetadataController
+from controllers.photo_controller import PhotoController
+from controllers.id_controller import IDController
 
-from app.views.metadata_view import MetadataView
-from app.views.photo_view import PhotoView
-from app.views.id_view import IDView
-from app.views.about_view import AboutView
-from app.utils.paths import ensure_all_dirs
+from views.metadata_view import MetadataView
+from views.photo_view import PhotoView
+from views.id_view import IDView
+from views.about_view import AboutView
+from utils.paths import ensure_all_dirs
 
 
 class PhotoDataApp(tk.Tk):
