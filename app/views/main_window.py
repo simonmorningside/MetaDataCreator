@@ -17,7 +17,10 @@ class PhotoDataApp(tk.Tk):
         super().__init__()
         self.title("Metadata Creator")
         self.geometry("440x480")
-        self.resizable(False, False)
+
+        # 🔥 Make window resizable
+        self.resizable(True, True)
+
         ensure_all_dirs()
 
         # --- App State ---
@@ -30,24 +33,32 @@ class PhotoDataApp(tk.Tk):
         self.photo_controller = PhotoController(self)
         self.id_controller = IDController(self)
 
-        # --- Configure root grid ---
-        self.grid_rowconfigure(0, weight=1)  # main content
+        # --- Root grid (main + status bar) ---
+        self.grid_rowconfigure(0, weight=1)  # main
         self.grid_rowconfigure(1, weight=0)  # status bar
         self.grid_columnconfigure(0, weight=1)
 
-        # --- Frame Container for pages ---
+        # --- Container for pages ---
         self.container = tk.Frame(self, bg="#f4f4f4")
         self.container.grid(row=0, column=0, sticky="nsew")
 
+        # 🔥 Make container responsive
+        self.container.grid_rowconfigure(0, weight=1)
+        self.container.grid_columnconfigure(0, weight=1)
+
+        # --- Page frames ---
         self.frames = {}
         for F in (MainMenu, MetadataView, PhotoView, IDView, AboutView):
-            page_name = F.__name__
             frame = F(parent=self.container, app=self)
-            self.frames[page_name] = frame
+
+            # 🔥 Every child frame fills container
             frame.grid(row=0, column=0, sticky="nsew")
 
-        # --- ✅ Status Bar ---
-        status_frame = tk.Frame(self, height=60, bg="#4CAF50")  # taller
+            # Store
+            self.frames[F.__name__] = frame
+
+        # --- Status Bar ---
+        status_frame = tk.Frame(self, height=60, bg="#4CAF50")
         status_frame.grid(row=1, column=0, sticky="ew")
         status_frame.grid_propagate(False)
 
@@ -62,16 +73,14 @@ class PhotoDataApp(tk.Tk):
         )
         self.status_label.pack(fill="both", expand=True)
 
-        # Update status automatically when test mode toggled
+        # Update status when test mode changes
         self.test_mode.trace_add("write", lambda *args: self.update_status())
 
-        # Show main menu
+        # Start on Main Menu
         self.show_frame("MainMenu")
 
     def show_frame(self, page_name):
-        """Switch visible frame."""
-        frame = self.frames[page_name]
-        frame.tkraise()
+        self.frames[page_name].tkraise()
 
     def update_csv_dropdown(self, csv_dict):
         """Update dropdown when new metadata loaded."""
@@ -100,19 +109,19 @@ class PhotoDataApp(tk.Tk):
 
 
 # ---------------------------------------------------------------------
-# 🎨 MAIN MENU FRAME
+# 🎨 MAIN MENU FRAME — Now 100% Responsive
 # ---------------------------------------------------------------------
 class MainMenu(tk.Frame):
     def __init__(self, parent, app):
         super().__init__(parent, bg="#f4f4f4")
         self.app = app
 
-        # Configure grid to center content
-        self.grid_rowconfigure(0, weight=1)  # top spacer
-        self.grid_rowconfigure(1, weight=0)  # title
-        self.grid_rowconfigure(2, weight=0)  # buttons
-        self.grid_rowconfigure(3, weight=0)  # test toggle
-        self.grid_rowconfigure(4, weight=1)  # bottom spacer
+        # --- Make MainMenu frame responsive ---
+        self.grid_rowconfigure(0, weight=1)   # top spacer
+        self.grid_rowconfigure(1, weight=0)   # title
+        self.grid_rowconfigure(2, weight=1)   # button area (expands)
+        self.grid_rowconfigure(3, weight=0)   # test toggle
+        self.grid_rowconfigure(4, weight=1)   # bottom spacer
         self.grid_columnconfigure(0, weight=1)
 
         # --- Title ---
@@ -127,7 +136,13 @@ class MainMenu(tk.Frame):
 
         # --- Buttons Container ---
         button_frame = tk.Frame(self, bg="#f4f4f4")
-        button_frame.grid(row=2, column=0)
+        button_frame.grid(row=2, column=0, sticky="nsew")
+
+        # 🔥 Make button frame responsive
+        button_frame.grid_rowconfigure(0, weight=1)
+        button_frame.grid_rowconfigure(1, weight=1)
+        button_frame.grid_columnconfigure(0, weight=1)
+        button_frame.grid_columnconfigure(1, weight=1)
 
         style = {
             "width": 15,
@@ -140,11 +155,22 @@ class MainMenu(tk.Frame):
             "bd": 3,
         }
 
-        # Buttons 2x2 grid, centered inside button_frame
-        tk.Button(button_frame, text="Metadata", command=lambda: app.show_frame("MetadataView"), **style).grid(row=0, column=0, padx=20, pady=20)
-        tk.Button(button_frame, text="Photos", command=lambda: app.show_frame("PhotoView"), **style).grid(row=0, column=1, padx=20, pady=20)
-        tk.Button(button_frame, text="Tools", command=lambda: app.show_frame("IDView"), **style).grid(row=1, column=0, padx=20, pady=20)
-        tk.Button(button_frame, text="About Me", command=lambda: app.show_frame("AboutView"), **style).grid(row=1, column=1, padx=20, pady=20)
+        # 🔥 Responsive buttons (fill grid cells)
+        tk.Button(button_frame, text="Metadata",
+                  command=lambda: app.show_frame("MetadataView"),
+                  **style).grid(row=0, column=0, padx=20, pady=20, sticky="nsew")
+
+        tk.Button(button_frame, text="Photos",
+                  command=lambda: app.show_frame("PhotoView"),
+                  **style).grid(row=0, column=1, padx=20, pady=20, sticky="nsew")
+
+        tk.Button(button_frame, text="Tools",
+                  command=lambda: app.show_frame("IDView"),
+                  **style).grid(row=1, column=0, padx=20, pady=20, sticky="nsew")
+
+        tk.Button(button_frame, text="About Me",
+                  command=lambda: app.show_frame("AboutView"),
+                  **style).grid(row=1, column=1, padx=20, pady=20, sticky="nsew")
 
         # --- Test Mode Toggle ---
         test_frame = tk.Frame(self, bg="#f4f4f4")
