@@ -9,7 +9,8 @@ env/
 /photos
 /app/build
 /app/dist
-
+/build
+/dist
 # Byte-compiled / cache files
 __pycache__/
 *.py[cod]
