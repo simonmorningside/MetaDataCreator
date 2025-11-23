@@ -84,11 +84,16 @@ class AIController:
 
     # ------------------------------------------------
     def caption_all_images(self):
-        """Loop over CSVs and generate captions for IDs in the AI pool."""
+        """
+        Loop over CSVs and generate captions for IDs in the AI pool.
+        RETURNS a list of IDs that were captioned.
+        """
+        captioned_ids = []  # <— Always return a list
+
         csv_files = list(self.data_dir.glob("*.csv"))
         if not csv_files:
             print(f"No CSV files found in {self.data_dir}")
-            return
+            return captioned_ids
 
         all_photos = list(self.photo_dir.glob("*.*"))
         if all_photos:
@@ -107,30 +112,37 @@ class AIController:
             if "Description" not in df.columns:
                 df["Description"] = ""
 
-            # Filter rows in AI pool
+            # Filter rows still in AI pool
             df_pool = df[df["ID"].astype(str).isin(self.ai_pool_ids)]
 
             for idx, row in df_pool.iterrows():
                 image_id = str(row["ID"])
 
-                # Find corresponding image file
+                # Match image file
                 matches = list(self.photo_dir.glob(f"{image_id}.*"))
                 if not matches:
                     print(f"Skipping {image_id}: image not found")
                     continue
 
                 image_path = matches[0]
-                caption = self.generate_caption(image_path)
-                print(f"{image_path.name}: {caption}")
 
-                df.at[idx, "Description"] = caption
-                self.remove_captioned_id(image_id)
+                try:
+                    caption = self.generate_caption(image_path)
+                    df.at[idx, "Description"] = caption
+                    captioned_ids.append(image_id)  # <— Track it
+                    print(f"Captioned {image_id}: {caption}")
+
+                    self.remove_captioned_id(image_id)
+                except Exception as e:
+                    print(f"❌ Error captioning {image_id}: {e}")
 
             df.to_csv(csv_path, index=False)
             print(f"Updated CSV saved: {csv_path}")
 
         print("\n✅ Captioning complete.")
         print(f"Remaining IDs in pool: {len(self.ai_pool_ids)}")
+
+        return captioned_ids  # <— ALWAYS return safe list
 
 
 if __name__ == "__main__":
