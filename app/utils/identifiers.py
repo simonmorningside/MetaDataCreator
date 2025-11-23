@@ -14,12 +14,14 @@ TEST_POOL_FILE = DOCUMENTS_TEST_DIR / "available_ids_test.json"
 
 
 class IdentifierPool:
-    def __init__(self,
-                 csv_datasets: dict[str, pd.DataFrame],
-                 id_col: str = "ID",
-                 title_col: str = "Title",
-                 rebuild: bool = False,
-                 test_mode: bool = False):
+    def __init__(
+        self,
+        csv_datasets: dict[str, pd.DataFrame],
+        id_col: str = "ID",
+        title_col: str = "Title",
+        rebuild: bool = False,
+        test_mode: bool = False,
+    ):
         """
         csv_datasets: dictionary of {variable_name: DataFrame} from assigned CSVs
         id_col: column name containing unique IDs
@@ -46,18 +48,26 @@ class IdentifierPool:
     def _build_pool(self, datasets: dict[str, pd.DataFrame]) -> dict[str, list[str]]:
         pool = {}
         for name, df in datasets.items():
-            if self.id_col in df.columns:
-                # Step 1: Drop rows with missing IDs
-                df_valid = df[df[self.id_col].notna()]
+            # Determine which identifier column exists
+            id_column_candidates = [self.id_col, "dcextended:identifier"]
+            id_col_in_df = next((col for col in id_column_candidates if col in df.columns), None)
 
-                # Step 2: Keep only rows where all other columns are empty
-                other_cols = [col for col in df.columns if col != self.id_col]
+            if id_col_in_df:
+                # Keep only rows where ID is not empty
+                df_valid = df[df[id_col_in_df].notna()]
+
+                # Columns to check for emptiness (exclude ID and file[mediasource])
+                ignore_cols = {id_col_in_df, "file[mediasource]"}
+                other_cols = [col for col in df_valid.columns if col not in ignore_cols]
+
+                # Keep rows where all other columns are empty
                 mask_empty = df_valid[other_cols].isna().all(axis=1)
-                available_ids = df_valid.loc[mask_empty, self.id_col].astype(str).tolist()
+                available_ids = df_valid.loc[mask_empty, id_col_in_df].astype(str).tolist()
 
                 pool[name] = available_ids
             else:
                 pool[name] = []
+
         return pool
 
     def get_available_ids(self, csv_name: str) -> list[str]:
@@ -81,15 +91,14 @@ class IdentifierPool:
         self.pool_file.parent.mkdir(parents=True, exist_ok=True)
         with self.pool_file.open("w", encoding="utf-8") as f:
             json.dump(self.pool, f, indent=2)
-            
-    
+
     def summary(self):
         for csv_name, ids in self.pool.items():
             print(f"{csv_name}: {len(ids)} available IDs")
 
     def items(self):
         return self.pool.items()
-    
+
 
 def display_identifier_pools() -> str:
     """Return a formatted string showing the full contents of both normal and test identifier pools."""
@@ -114,5 +123,3 @@ def display_identifier_pools() -> str:
         else:
             pools.append(f"{label}: No pool file found.")
     return "\n\n".join(pools)
-
-

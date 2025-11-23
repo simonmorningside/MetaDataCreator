@@ -4,7 +4,7 @@ from pathlib import Path
 import pandas as pd
 from PIL import Image
 import torch
-from transformers import VisionEncoderDecoderModel, ViTImageProcessor, AutoTokenizer
+from transformers import BlipProcessor, BlipForConditionalGeneration
 from utils.paths import (
     DATA_DIR,
     DATA_TEST_DIR,
@@ -16,10 +16,13 @@ import json
 
 class AIController:
     def __init__(self, test_mode: bool = False):
-        """Initialize the AI controller using vit-gpt2-image-captioning."""
+        """Initialize AI controller using BLIP-Large (Salesforce/blip-image-captioning-large)."""
+
         self.test_mode = test_mode
 
+        # -------------------------
         # Directories
+        # -------------------------
         if test_mode:
             self.data_dir = DATA_TEST_DIR
             self.photo_dir = PHOTOS_TEST_RENAMED_DIR
@@ -30,21 +33,26 @@ class AIController:
             self.ai_pool_file = DATA_DIR / "ai_pool.json"
 
         # -------------------------
-        # Load model + processor + tokenizer
+        # Load BLIP-Large
         # -------------------------
-        model_name = "nlpconnect/vit-gpt2-image-captioning"
-        print(f"Loading model: {model_name} ...")
+        model_name = "Salesforce/blip-image-captioning-large"
+        print(f"Loading BLIP model: {model_name} ...")
 
-        self.model = VisionEncoderDecoderModel.from_pretrained(model_name)
-        self.feature_extractor = ViTImageProcessor.from_pretrained(model_name)
-        self.tokenizer = AutoTokenizer.from_pretrained(model_name)
+        self.processor = BlipProcessor.from_pretrained(model_name)
+        self.model = BlipForConditionalGeneration.from_pretrained(
+            model_name,
+            torch_dtype=torch.float32   # safer for CPU-only usage
+        )
 
-        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+        # Always CPU on Windows + AMD
+        self.device = torch.device("cpu")
         self.model.to(self.device)
 
-        print("Model loaded successfully.\n")
+        print("BLIP model loaded successfully.\n")
 
+        # -------------------------
         # Load AI pool
+        # -------------------------
         if not self.ai_pool_file.exists():
             raise FileNotFoundError(f"AI pool file not found: {self.ai_pool_file}")
 
@@ -57,25 +65,23 @@ class AIController:
     # Generate caption
     # ------------------------------------------------
     def generate_caption(self, image_path: Path) -> str:
-        """Generate a caption for a single image."""
+        """Generate caption using BLIP-Large."""
         image = Image.open(image_path).convert("RGB")
-        pixel_values = self.feature_extractor(images=image, return_tensors="pt").pixel_values.to(self.device)
 
-        # Generate caption
+        inputs = self.processor(images=image, return_tensors="pt").to(self.device)
+
         with torch.no_grad():
-            output_ids = self.model.generate(
-                pixel_values,
-                max_length=64,
-                num_beams=4,
-                early_stopping=True
+            output = self.model.generate(
+                **inputs,
+                max_new_tokens=60
             )
 
-        caption = self.tokenizer.decode(output_ids[0], skip_special_tokens=True)
+        caption = self.processor.decode(output[0], skip_special_tokens=True)
         return caption
 
     # ------------------------------------------------
     def remove_captioned_id(self, image_id: str):
-        """Remove a captioned ID from the AI pool and update JSON."""
+        """Remove a captioned ID from the AI pool JSON."""
         if image_id in self.ai_pool_ids:
             self.ai_pool_ids.remove(image_id)
             with open(self.ai_pool_file, "w") as f:
@@ -88,7 +94,7 @@ class AIController:
         Loop over CSVs and generate captions for IDs in the AI pool.
         RETURNS a list of IDs that were captioned.
         """
-        captioned_ids = []  # <— Always return a list
+        captioned_ids = []
 
         csv_files = list(self.data_dir.glob("*.csv"))
         if not csv_files:
@@ -112,7 +118,7 @@ class AIController:
             if "Description" not in df.columns:
                 df["Description"] = ""
 
-            # Filter rows still in AI pool
+            # Filter rows still needing captions
             df_pool = df[df["ID"].astype(str).isin(self.ai_pool_ids)]
 
             for idx, row in df_pool.iterrows():
@@ -129,10 +135,12 @@ class AIController:
                 try:
                     caption = self.generate_caption(image_path)
                     df.at[idx, "Description"] = caption
-                    captioned_ids.append(image_id)  # <— Track it
+                    captioned_ids.append(image_id)
+
                     print(f"Captioned {image_id}: {caption}")
 
                     self.remove_captioned_id(image_id)
+
                 except Exception as e:
                     print(f"❌ Error captioning {image_id}: {e}")
 
@@ -142,11 +150,11 @@ class AIController:
         print("\n✅ Captioning complete.")
         print(f"Remaining IDs in pool: {len(self.ai_pool_ids)}")
 
-        return captioned_ids  # <— ALWAYS return safe list
+        return captioned_ids
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="AIController using vit-gpt2-image-captioning")
+    parser = argparse.ArgumentParser(description="AIController using BLIP-Large captioning")
     parser.add_argument("--test", action="store_true", help="Use test directories and CSVs")
     args = parser.parse_args()
 

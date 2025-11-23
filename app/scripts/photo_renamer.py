@@ -15,7 +15,7 @@ from utils.identifiers import IdentifierPool
 from utils.photo_variant_handler import group_and_rename_variants
 import json
 import pandas as pd
-
+import threading
 
 # -----------------------------
 # PHOTO RENAMER
@@ -93,6 +93,9 @@ def run_photo_renamer(test_mode: bool = False, gui_mode: bool = False):
         "4": "1950-1959",
         "5": "1960-1969",
         "6": "1970-1979",
+        "7": "1980-1989",
+        "8": "1990-1999",
+        "9": "2000-2009",
     }
 
     if gui_mode:
@@ -165,138 +168,124 @@ def run_photo_renamer(test_mode: bool = False, gui_mode: bool = False):
 # -----------------------------
 # PHOTO CLEANING
 # -----------------------------
-def clean_photos(test_mode: bool = False, gui_mode: bool = False):
-    """
-    Apply cleaning operations to photos (brightness/contrast/denoise/rotation) in place.
-    Shows old vs cleaned images for user choice with streamlined controls.
-    """
+def clean_photos(test_mode: bool = False):
+    """Responsive GUI photo cleaning with background preview updates."""
     target_dir = PHOTOS_TEST_RENAMED_DIR if test_mode else PHOTOS_RENAMED_DIR
     photo_files = sorted(target_dir.glob("*.*"))
 
     if not photo_files:
         msg = f"No photos found in {target_dir}"
         print(msg)
-        if gui_mode:
-            messagebox.showwarning("No Photos Found", msg)
+        messagebox.showwarning("No Photos Found", msg)
         return
 
     def get_median_filter_size(denoise_factor: float) -> int:
         """Map denoise factor (0-1) to odd integer size for MedianFilter (1–9)."""
-        size = max(1, min(9, int(denoise_factor * 9) | 1))  # Ensure odd number
+        size = max(1, min(9, int(denoise_factor * 9) | 1))  # Ensure odd
         return size
 
     for photo_path in photo_files:
-        img = Image.open(photo_path).convert("RGB")
+        img_full = Image.open(photo_path).convert("RGB")
+        preview_base = img_full.resize((400, 400))  # Small preview for fast processing
 
-        # Default adjustment values
         brightness = 1.0
         contrast = 1.0
         denoise = 0.0
         rotation = 0
-        preview_img = img.copy()  # nonlocal reference
 
-        if gui_mode:
-            window = Toplevel()
-            window.title(f"Clean Photo: {photo_path.name}")
-            window.configure(bg="white")
+        # --- GUI Setup ---
+        window = Toplevel()
+        window.title(f"Clean Photo: {photo_path.name}")
+        window.configure(bg="white")
 
-            # --- Labels for old vs preview ---
-            Label(window, text="Original", font=("Arial", 12, "bold"), bg="white").grid(row=0, column=0)
-            Label(window, text="Preview", font=("Arial", 12, "bold"), bg="white").grid(row=0, column=1)
+        Label(window, text="Original", font=("Arial", 12, "bold"), bg="white").grid(row=0, column=0)
+        Label(window, text="Preview", font=("Arial", 12, "bold"), bg="white").grid(row=0, column=1)
 
-            orig_imgtk = ImageTk.PhotoImage(img.resize((400, 400)))
-            old_canvas = Label(window, image=orig_imgtk)
-            old_canvas.image = orig_imgtk
-            old_canvas.grid(row=1, column=0, padx=10, pady=10)
+        orig_imgtk = ImageTk.PhotoImage(preview_base)
+        old_canvas = Label(window, image=orig_imgtk)
+        old_canvas.image = orig_imgtk
+        old_canvas.grid(row=1, column=0, padx=10, pady=10)
 
-            clean_canvas = Label(window)
-            clean_canvas.grid(row=1, column=1, padx=10, pady=10)
+        clean_canvas = Label(window)
+        clean_canvas.grid(row=1, column=1, padx=10, pady=10)
 
-            # --- Update preview function ---
-            def update_preview():
-                nonlocal preview_img
-                preview_img = img.copy()
-                preview_img = ImageEnhance.Brightness(preview_img).enhance(brightness)
-                preview_img = ImageEnhance.Contrast(preview_img).enhance(contrast)
+        # --- Preview Update in Background Thread ---
+        def update_preview():
+            def worker():
+                nonlocal brightness, contrast, denoise, rotation
+                img_copy = preview_base.copy()
+                img_copy = ImageEnhance.Brightness(img_copy).enhance(brightness)
+                img_copy = ImageEnhance.Contrast(img_copy).enhance(contrast)
                 if denoise > 0:
                     size = get_median_filter_size(denoise)
-                    preview_img = preview_img.filter(ImageFilter.MedianFilter(size=size))
+                    img_copy = img_copy.filter(ImageFilter.MedianFilter(size=size))
                 if rotation != 0:
-                    preview_img = preview_img.rotate(rotation, expand=True)
-                preview_imgtk = ImageTk.PhotoImage(preview_img.resize((400, 400)))
-                clean_canvas.configure(image=preview_imgtk)
-                clean_canvas.image = preview_imgtk
+                    img_copy = img_copy.rotate(rotation, expand=True)
+                preview_imgtk = ImageTk.PhotoImage(img_copy)
+                clean_canvas.after(0, lambda: set_preview(preview_imgtk))
 
-            # --- Helper to create up/down control for a parameter ---
-            def create_control(name, value_getter, value_setter, row):
-                frame = Frame(window, bg="white")
-                frame.grid(row=row, column=0, columnspan=2, pady=2)
-                Label(frame, text=f"{name}: ", font=("Arial", 10), bg="white").pack(side="left")
-                value_label = Label(frame, text=f"{value_getter():.2f}" if name != "Denoise" else f"{value_getter():.1f}", width=5, bg="white")
-                value_label.pack(side="left", padx=2)
+            threading.Thread(target=worker, daemon=True).start()
 
-                def up():
-                    value_setter(1)
-                    value_label.config(text=f"{value_getter():.2f}" if name != "Denoise" else f"{value_getter():.1f}")
-                    update_preview()
+        def set_preview(imgtk):
+            clean_canvas.configure(image=imgtk)
+            clean_canvas.image = imgtk
 
-                def down():
-                    value_setter(-1)
-                    value_label.config(text=f"{value_getter():.2f}" if name != "Denoise" else f"{value_getter():.1f}")
-                    update_preview()
+        # --- Slider/Button Controls ---
+        def create_control(name, getter, setter, row, step=0.1):
+            frame = Frame(window, bg="white")
+            frame.grid(row=row, column=0, columnspan=2, pady=2)
+            Label(frame, text=f"{name}: ", font=("Arial", 10), bg="white").pack(side="left")
+            value_label = Label(frame, text=f"{getter():.2f}", width=5, bg="white")
+            value_label.pack(side="left", padx=2)
 
-                Button(frame, text="▲", command=up, width=2).pack(side="left")
-                Button(frame, text="▼", command=down, width=2).pack(side="left")
+            def up():
+                setter(step)
+                value_label.config(text=f"{getter():.2f}")
+                update_preview()
 
-            # --- Define setters and getters ---
-            create_control("Brightness",
-                           lambda: brightness,
-                           lambda d: nonlocal_set('brightness', d * 0.1),
-                           row=2)
-            create_control("Contrast",
-                           lambda: contrast,
-                           lambda d: nonlocal_set('contrast', d * 0.1),
-                           row=3)
-            create_control("Denoise",
-                           lambda: denoise,
-                           lambda d: nonlocal_set('denoise', d * 0.1),
-                           row=4)
-            create_control("Rotation",
-                           lambda: rotation,
-                           lambda d: nonlocal_set('rotation', d * 15),
-                           row=5)
+            def down():
+                setter(-step)
+                value_label.config(text=f"{getter():.2f}")
+                update_preview()
 
-            # --- Buttons for keeping images ---
-            Button(window, text="Keep Original", bg="lightgray", command=lambda: window.destroy()).grid(row=6, column=0, pady=10, sticky="ew")
-            Button(window, text="Keep Cleaned", bg="lightgreen", command=lambda: save_and_close()).grid(row=6, column=1, pady=10, sticky="ew")
+            Button(frame, text="▲", command=up, width=2).pack(side="left")
+            Button(frame, text="▼", command=down, width=2).pack(side="left")
 
-            # Helper functions for nonlocal variables
-            def nonlocal_set(name, delta):
-                nonlocal brightness, contrast, denoise, rotation
-                if name == "brightness":
-                    brightness = max(0.1, brightness + delta)
-                elif name == "contrast":
-                    contrast = max(0.1, contrast + delta)
-                elif name == "denoise":
-                    denoise = min(max(0.0, denoise + delta), 1.0)
-                elif name == "rotation":
-                    rotation = (rotation + delta) % 360
+        def set_param(name, delta):
+            nonlocal brightness, contrast, denoise, rotation
+            if name == "brightness":
+                brightness = max(0.1, brightness + delta)
+            elif name == "contrast":
+                contrast = max(0.1, contrast + delta)
+            elif name == "denoise":
+                denoise = min(max(0.0, denoise + delta), 1.0)
+            elif name == "rotation":
+                rotation = (rotation + delta) % 360
 
-            def save_and_close():
-                preview_img.save(photo_path)
-                window.destroy()
+        create_control("Brightness", lambda: brightness, lambda d: set_param("brightness", d), row=2)
+        create_control("Contrast", lambda: contrast, lambda d: set_param("contrast", d), row=3)
+        create_control("Denoise", lambda: denoise, lambda d: set_param("denoise", d), row=4, step=0.1)
+        create_control("Rotation", lambda: rotation, lambda d: set_param("rotation", d), row=5, step=90)
 
-            update_preview()
-            window.wait_window()
-        else:
-            # Non-GUI automatic cleaning
-            cleaned_img = ImageEnhance.Brightness(img).enhance(1.1)
-            cleaned_img = ImageEnhance.Contrast(cleaned_img).enhance(1.1)
-            cleaned_img = cleaned_img.filter(ImageFilter.MedianFilter(size=3))
-            cleaned_img.thumbnail((800, 800))
-            cleaned_img.save(photo_path)
+        # --- Save Buttons ---
+        def keep_original():
+            window.destroy()
 
-    msg = f"Photo cleaning complete in place for {target_dir}"
-    print(msg)
-    if gui_mode:
-        messagebox.showinfo("Cleaning Complete", msg)
+        def keep_cleaned():
+            # Apply full-resolution adjustments to original image
+            final_img = img_full.copy()
+            final_img = ImageEnhance.Brightness(final_img).enhance(brightness)
+            final_img = ImageEnhance.Contrast(final_img).enhance(contrast)
+            if denoise > 0:
+                size = get_median_filter_size(denoise)
+                final_img = final_img.filter(ImageFilter.MedianFilter(size=size))
+            if rotation != 0:
+                final_img = final_img.rotate(rotation, expand=True)
+            final_img.save(photo_path)
+            window.destroy()
+
+        Button(window, text="Keep Original", bg="lightgray", command=keep_original).grid(row=6, column=0, pady=10, sticky="ew")
+        Button(window, text="Keep Cleaned", bg="lightgreen", command=keep_cleaned).grid(row=6, column=1, pady=10, sticky="ew")
+
+        update_preview()
+        window.wait_window()
