@@ -15,3 +15,5 @@ env/
 __pycache__/
 *.py[cod]
 *$py.class
+
+/app/main.spec
