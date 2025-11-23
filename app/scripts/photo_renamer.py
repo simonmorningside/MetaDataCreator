@@ -1,5 +1,6 @@
 from pathlib import Path
-from tkinter import messagebox, simpledialog
+from tkinter import messagebox, simpledialog, Toplevel, Label, Button, Frame, Button
+from PIL import Image, ImageEnhance, ImageTk, ImageFilter
 from utils.paths import (
     DATA_DIR,
     DATA_TEST_DIR,
@@ -16,12 +17,14 @@ import json
 import pandas as pd
 
 
+# -----------------------------
+# PHOTO RENAMER
+# -----------------------------
 def run_photo_renamer(test_mode: bool = False, gui_mode: bool = False):
     """
     Rename photo files using IDs from CSVs (CLI or GUI) and save a pool for AI captioning.
     Properly respects test_mode for all paths and pool usage.
     """
-
     # --- Paths ---
     if test_mode:
         data_dir = DATA_TEST_DIR
@@ -50,9 +53,9 @@ def run_photo_renamer(test_mode: bool = False, gui_mode: bool = False):
     # --- Assign variables from CSVs ---
     assigned_variables = assign_variables(datasets)
 
-    # --- Initialize ID pool (reads existing pool internally) ---
+    # --- Initialize ID pool ---
     id_pool = IdentifierPool(assigned_variables, test_mode=test_mode)
-    id_pool.pool_file = pool_file  # points to the correct pool for this mode
+    id_pool.pool_file = pool_file
 
     # --- Choose pool ---
     available_pools = list(id_pool.pool.keys())
@@ -142,7 +145,7 @@ def run_photo_renamer(test_mode: bool = False, gui_mode: bool = False):
     csv_file_path = data_dir / f"{pool_choice}.csv"
     df.to_csv(csv_file_path, index=False)
 
-    # --- Save AI Pool (only IDs that exist in renamed folder) ---
+    # --- Save AI Pool ---
     ai_ids = [str(f) for f in df['ID'] if pd.notna(f) and list(renamed_dir.glob(f"{f}.*"))]
     with open(ai_pool_file, 'w') as f:
         json.dump(ai_ids, f, indent=2)
@@ -157,3 +160,143 @@ def run_photo_renamer(test_mode: bool = False, gui_mode: bool = False):
     print(summary_msg)
     if gui_mode:
         messagebox.showinfo("Rename Complete", summary_msg)
+
+
+# -----------------------------
+# PHOTO CLEANING
+# -----------------------------
+def clean_photos(test_mode: bool = False, gui_mode: bool = False):
+    """
+    Apply cleaning operations to photos (brightness/contrast/denoise/rotation) in place.
+    Shows old vs cleaned images for user choice with streamlined controls.
+    """
+    target_dir = PHOTOS_TEST_RENAMED_DIR if test_mode else PHOTOS_RENAMED_DIR
+    photo_files = sorted(target_dir.glob("*.*"))
+
+    if not photo_files:
+        msg = f"No photos found in {target_dir}"
+        print(msg)
+        if gui_mode:
+            messagebox.showwarning("No Photos Found", msg)
+        return
+
+    def get_median_filter_size(denoise_factor: float) -> int:
+        """Map denoise factor (0-1) to odd integer size for MedianFilter (1–9)."""
+        size = max(1, min(9, int(denoise_factor * 9) | 1))  # Ensure odd number
+        return size
+
+    for photo_path in photo_files:
+        img = Image.open(photo_path).convert("RGB")
+
+        # Default adjustment values
+        brightness = 1.0
+        contrast = 1.0
+        denoise = 0.0
+        rotation = 0
+        preview_img = img.copy()  # nonlocal reference
+
+        if gui_mode:
+            window = Toplevel()
+            window.title(f"Clean Photo: {photo_path.name}")
+            window.configure(bg="white")
+
+            # --- Labels for old vs preview ---
+            Label(window, text="Original", font=("Arial", 12, "bold"), bg="white").grid(row=0, column=0)
+            Label(window, text="Preview", font=("Arial", 12, "bold"), bg="white").grid(row=0, column=1)
+
+            orig_imgtk = ImageTk.PhotoImage(img.resize((400, 400)))
+            old_canvas = Label(window, image=orig_imgtk)
+            old_canvas.image = orig_imgtk
+            old_canvas.grid(row=1, column=0, padx=10, pady=10)
+
+            clean_canvas = Label(window)
+            clean_canvas.grid(row=1, column=1, padx=10, pady=10)
+
+            # --- Update preview function ---
+            def update_preview():
+                nonlocal preview_img
+                preview_img = img.copy()
+                preview_img = ImageEnhance.Brightness(preview_img).enhance(brightness)
+                preview_img = ImageEnhance.Contrast(preview_img).enhance(contrast)
+                if denoise > 0:
+                    size = get_median_filter_size(denoise)
+                    preview_img = preview_img.filter(ImageFilter.MedianFilter(size=size))
+                if rotation != 0:
+                    preview_img = preview_img.rotate(rotation, expand=True)
+                preview_imgtk = ImageTk.PhotoImage(preview_img.resize((400, 400)))
+                clean_canvas.configure(image=preview_imgtk)
+                clean_canvas.image = preview_imgtk
+
+            # --- Helper to create up/down control for a parameter ---
+            def create_control(name, value_getter, value_setter, row):
+                frame = Frame(window, bg="white")
+                frame.grid(row=row, column=0, columnspan=2, pady=2)
+                Label(frame, text=f"{name}: ", font=("Arial", 10), bg="white").pack(side="left")
+                value_label = Label(frame, text=f"{value_getter():.2f}" if name != "Denoise" else f"{value_getter():.1f}", width=5, bg="white")
+                value_label.pack(side="left", padx=2)
+
+                def up():
+                    value_setter(1)
+                    value_label.config(text=f"{value_getter():.2f}" if name != "Denoise" else f"{value_getter():.1f}")
+                    update_preview()
+
+                def down():
+                    value_setter(-1)
+                    value_label.config(text=f"{value_getter():.2f}" if name != "Denoise" else f"{value_getter():.1f}")
+                    update_preview()
+
+                Button(frame, text="▲", command=up, width=2).pack(side="left")
+                Button(frame, text="▼", command=down, width=2).pack(side="left")
+
+            # --- Define setters and getters ---
+            create_control("Brightness",
+                           lambda: brightness,
+                           lambda d: nonlocal_set('brightness', d * 0.1),
+                           row=2)
+            create_control("Contrast",
+                           lambda: contrast,
+                           lambda d: nonlocal_set('contrast', d * 0.1),
+                           row=3)
+            create_control("Denoise",
+                           lambda: denoise,
+                           lambda d: nonlocal_set('denoise', d * 0.1),
+                           row=4)
+            create_control("Rotation",
+                           lambda: rotation,
+                           lambda d: nonlocal_set('rotation', d * 15),
+                           row=5)
+
+            # --- Buttons for keeping images ---
+            Button(window, text="Keep Original", bg="lightgray", command=lambda: window.destroy()).grid(row=6, column=0, pady=10, sticky="ew")
+            Button(window, text="Keep Cleaned", bg="lightgreen", command=lambda: save_and_close()).grid(row=6, column=1, pady=10, sticky="ew")
+
+            # Helper functions for nonlocal variables
+            def nonlocal_set(name, delta):
+                nonlocal brightness, contrast, denoise, rotation
+                if name == "brightness":
+                    brightness = max(0.1, brightness + delta)
+                elif name == "contrast":
+                    contrast = max(0.1, contrast + delta)
+                elif name == "denoise":
+                    denoise = min(max(0.0, denoise + delta), 1.0)
+                elif name == "rotation":
+                    rotation = (rotation + delta) % 360
+
+            def save_and_close():
+                preview_img.save(photo_path)
+                window.destroy()
+
+            update_preview()
+            window.wait_window()
+        else:
+            # Non-GUI automatic cleaning
+            cleaned_img = ImageEnhance.Brightness(img).enhance(1.1)
+            cleaned_img = ImageEnhance.Contrast(cleaned_img).enhance(1.1)
+            cleaned_img = cleaned_img.filter(ImageFilter.MedianFilter(size=3))
+            cleaned_img.thumbnail((800, 800))
+            cleaned_img.save(photo_path)
+
+    msg = f"Photo cleaning complete in place for {target_dir}"
+    print(msg)
+    if gui_mode:
+        messagebox.showinfo("Cleaning Complete", msg)

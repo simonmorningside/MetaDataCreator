@@ -1,4 +1,3 @@
-# photo_view.py
 import tkinter as tk
 from tkinter import ttk
 
@@ -15,6 +14,9 @@ class PhotoView(tk.Frame):
 
         # Rename photos button
         ttk.Button(self, text="Rename Photos", command=self.app.photo_controller.rename_photos).pack(pady=5)
+
+        # ⭐ Clean photos button
+        ttk.Button(self, text="Clean Photos", command=self.app.photo_controller.clean_photos).pack(pady=5)
 
         # Back to menu button
         ttk.Button(self, text="Back to Menu", command=lambda: app.show_frame("MainMenu")).pack(pady=20)

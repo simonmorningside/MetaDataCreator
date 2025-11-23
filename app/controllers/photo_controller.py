@@ -1,6 +1,5 @@
 from tkinter import messagebox
-from scripts.photo_renamer import run_photo_renamer
-
+from scripts.photo_renamer import run_photo_renamer, clean_photos
 
 class PhotoController:
     def __init__(self, app):
@@ -14,5 +13,15 @@ class PhotoController:
             messagebox.showinfo("Success", "Photo renaming complete!")
         except Exception as e:
             messagebox.showerror("Error", f"Failed to rename photos: {e}")
+        finally:
+            self.app.status_label.config(text="Ready")
+
+    def clean_photos(self):
+        try:
+            self.app.status_label.config(text="Cleaning photos...")
+            self.app.update()
+            clean_photos(test_mode=self.app.test_mode.get(), gui_mode=True)
+        except Exception as e:
+            messagebox.showerror("Error", f"Failed to clean photos: {e}")
         finally:
             self.app.status_label.config(text="Ready")
