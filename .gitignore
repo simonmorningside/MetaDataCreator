@@ -16,4 +16,4 @@ __pycache__/
 *.py[cod]
 *$py.class
 
-/app/main.spec
+main.spec
