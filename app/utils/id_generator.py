@@ -30,7 +30,7 @@ def generate_new_ids_for_csv(csv_name: str, num_new: int = 10, test_mode: bool =
         return
 
     # Extract prefix and max number using regex
-    pattern = re.compile(r"^([A-Z]{3,5})(\d{5})$")
+    pattern = re.compile(r"^([A-Z]{3,5})(\d{3,5})$")
     valid_ids = df["ID"].dropna().astype(str)
     matches = [m for m in valid_ids.map(lambda x: pattern.match(x)) if m]
 
